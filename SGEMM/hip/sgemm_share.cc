@@ -4,21 +4,6 @@
 #include <hipblas.h>
 #include <sys/time.h>
 
-struct my_timer
-{
-    timeval ts, te; //起始时刻,终止时刻
-    float dt; // 时间间隔,单位毫秒(ms)
-    void start(){
-        gettimeofday(&ts, NULL);
-    }
-    void stop(){
-        gettimeofday(&te, NULL);
-        long int dt_sec = te.tv_sec-ts.tv_sec;
-        long int dt_usec = te.tv_usec-ts.tv_usec;
-        // 时间间隔是ms
-        dt = dt_sec * 1.0e3 + dt_usec / 1.0e3;
-    }
-};
 
 // 针对方阵的代码,线程块大小是16*16
 #define Nsub 16
