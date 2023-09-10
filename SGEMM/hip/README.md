@@ -17,5 +17,6 @@ hipcc sgemm_share.cc -o sgemm_s -I $ROCM_PATH/rocrand/include -L $ROCM_PATH/lib 
 
 与hipblas API对比，passed表示self kernel计算结果的正确。
 
-2、sgemm_8_2:使用了共享内存、数据预取以及减少bank冲突的优化方法，暂时是计算固定维度大小的sgemm。
+2、dgemm:使用了cuda中sgemm_noFloat4的方法，核函数相同。
+3、sgemm_8_2:使用了共享内存、数据预取以及减少bank冲突的优化方法，暂时是计算固定维度大小的sgemm。
 
