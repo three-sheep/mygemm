@@ -34,7 +34,6 @@ __global__ void dgemm(const int M,const int K,const int N,double * __restrict__ 
     const int blockB_row = tid / blockSize_sn;
     const int blockB_col = tid %blockSize_sn;
     
-    // 没有使用双缓冲的预读取时，累加K/b_k次大迭代中每个线程块计算的结果即得到C的全部值，大迭代中包含b_k次更小的向量矩阵乘
     for(int iter1=0; iter1<K;iter1+=blockSize_sk){
         #pragma unroll
         // 从A【行主序】中读数据到As中，存入As时候用列主序
@@ -42,11 +41,7 @@ __global__ void dgemm(const int M,const int K,const int N,double * __restrict__ 
             int lsg_index = i/blockA_row_stride; // 每个过渡寄存器中存的数据索引（行排列），连续地址追加即可
             lsg_a[lsg_index]=A[blockIdx.y*K*blockSize_sm +
                 (blockA_row+i)*K + blockA_col + iter1];
-            As[blockA_col*blockSize_sm+blockA_row+i]=lsg_a[lsg_index]; // 数据转置，一个个按列追加写入SMEM中
-                // As[blockA_col][blockA_row + i]=lsg_a[lsg_index];   
-                // As[blockA_col+1][blockA_row + i]=lsg_a[lsg_index+1];
-                // As[blockA_col+2][blockA_row + i]=lsg_a[lsg_index+2];
-                // As[blockA_col+3][blockA_row + i]=lsg_a[lsg_index+3];
+            As[blockA_col*blockSize_sm+blockA_row+i]=lsg_a[lsg_index]; // 数据转置
         }
         // 读取数据时每个block,A为固定行滑动列读取；B为固定列滑动行读取。
         // A=&A[blockIdx.y*K*blockSize_sm]; B=&B[blockIdx.x*blockSize_sn]; 每个线程块的起始位置
@@ -57,7 +52,6 @@ __global__ void dgemm(const int M,const int K,const int N,double * __restrict__ 
         }
         __syncthreads();  // 确保正确读取寄存器的值
         
-        // 小迭代，计算共享内存中的小矩阵数据。取每一行的数据至寄存器中，加快线程计算时访问数据的速度
         #pragma unroll
         for(int iter2=0; iter2<blockSize_sk; iter2++){
             #pragma unroll
@@ -69,8 +63,6 @@ __global__ void dgemm(const int M,const int K,const int N,double * __restrict__ 
                 fg_b[b_c]=Bs[iter2*blockSize_sn+threadSize_gx * threadIdx.x + b_c];
             }
             __syncthreads();
-            
-
             #pragma unroll
             for(int i=0;i<threadSize_gy;i++){
                 for(int j=0;j<threadSize_gx;j++){
@@ -90,10 +82,7 @@ __global__ void dgemm(const int M,const int K,const int N,double * __restrict__ 
                 (blockIdx.x * blockSize_sn + threadIdx.x * threadSize_gx + j)]=accum[i*threadSize_gx+j];
         }
     }
-    
 }
-
-
 
 int main(int argc, char * * argv){
     if(argc != 4){
@@ -138,13 +127,13 @@ int main(int argc, char * * argv){
     const double alpha = 1.0;
     const double beta = 0.0;
     //预热
-    hipblasDgemm(handle, HIPBLAS_OP_N, HIPBLAS_OP_N, 2, 2, 2,
-        &alpha, dA, N, dB, N, &beta, d_Chipblas, N);
+    hipblasDgemm(handle, HIPBLAS_OP_N, HIPBLAS_OP_N, N, M, K,
+        &alpha, dB, N, dA, K, &beta, d_Chipblas, N);
     hipEventRecord(start);
     // blas为列主列存储，需要对输入参数做调整
     for(int i=0; i<1000;i++){
-        hipblasDgemm(handle, HIPBLAS_OP_N, HIPBLAS_OP_N, N, N, N,
-            &alpha, dB, N, dA, N, &beta, d_Chipblas, N);
+        hipblasDgemm(handle, HIPBLAS_OP_N, HIPBLAS_OP_N, N, M, K,
+            &alpha, dB, N, dA, K, &beta, d_Chipblas, N);
     }
     hipEventRecord(stop);
     hipEventSynchronize(stop);
@@ -165,7 +154,7 @@ int main(int argc, char * * argv){
     hipEventRecord(start);
     for(int i=0; i<1000;i++){
         dgemm<blockSize_sm,blockSize_sk,blockSize_sn,threadSize_gx,threadSize_gy>
-            <<<dimGrid,dimBlock>>>(N,N,N,dA,dB,d_Ckernel);
+            <<<dimGrid,dimBlock>>>(M,K,N,dA,dB,d_Ckernel);
     }
     hipEventRecord(stop);
     hipEventSynchronize(stop);
