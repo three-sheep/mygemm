@@ -140,13 +140,13 @@ int main(int argc, char * * argv){
     hipEventElapsedTime(&dt, start, stop);
     double FlopsR = (2*M*N*K)/dt;
     printf("hipblas api: %8.3f ms; Flops: %f \n", dt/1000,FlopsR);
-    hipMemcpy(C_hipblas, d_Chipblas, N * N * sizeof(double),hipMemcpyDeviceToHost);
+    hipMemcpy(C_hipblas, d_Chipblas, M * N * sizeof(double),hipMemcpyDeviceToHost);
 
-    const int blockSize_sm = 64;
-    const int blockSize_sn = 64;
-    const int blockSize_sk = 4;
-    const int threadSize_gx = 4;
-    const int threadSize_gy = 4;
+    const int blockSize_sm = 128;
+    const int blockSize_sn = 128;
+    const int blockSize_sk = 8;
+    const int threadSize_gx = 8;
+    const int threadSize_gy = 8;
     dim3 dimBlock(blockSize_sn/threadSize_gx,blockSize_sm/threadSize_gy);
     dim3 dimGrid(N/blockSize_sn,N/blockSize_sm);
 
@@ -162,7 +162,7 @@ int main(int argc, char * * argv){
     double FlopsC = (2*M*N*K)/dt;
     printf("self kernel: %8.3f ms; Flops: %f \n", dt/1000,FlopsC);
     
-    hipMemcpy(C_kernel, d_Ckernel, N * N * sizeof(double),hipMemcpyDeviceToHost);
+    hipMemcpy(C_kernel, d_Ckernel, M * N * sizeof(double),hipMemcpyDeviceToHost);
     //compare_matrices_result
     const double eps = 1.e-6;
     bool correct = true;
