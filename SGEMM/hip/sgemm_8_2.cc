@@ -472,7 +472,7 @@ int main()
 	printf("dcu time is %f (ms), GFlops is %f GFlops\n\n",run_time_dcu, (double)(2*size_m*size_n*size_k)/(run_time_dcu*1000000));
 	
 	printf("finish\n");
-
+    printf("this is hip platform!\n");
 	free(src_a);
 	free(src_b);
 	free(out_cpu);
