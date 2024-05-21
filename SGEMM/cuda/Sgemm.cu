@@ -231,7 +231,7 @@ int main(int argc, char** argv){
     
     CheckResult(M,N,h_Cc,h_Cr);
     printf("ratio: %f\n",FlopsC/FlopsR);
-    // 测试PR请求
+    // asas
     // Free Memory
     cudaFree(d_A);
     cudaFree(d_B);
